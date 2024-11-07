@@ -33,6 +33,8 @@ data Estado = Estado
   , anguloCanonIzq :: Float
   , anguloCanonDer :: Float
   , proyectiles :: [Proyectil]
+  , vidaIzq :: Int   -- Vida del tanque izquierdo
+  , vidaDer :: Int   -- Vida del tanque derecho
   }
 
 -- Representación de un proyectil
@@ -41,7 +43,7 @@ data Proyectil = Proyectil
   , posY :: Float
   , velX :: Float
   , velY :: Float
-  }
+  } deriving (Eq)
 
 -- Estado inicial
 estadoInicial :: Estado
@@ -51,12 +53,14 @@ estadoInicial = Estado
   , anguloCanonIzq = 0
   , anguloCanonDer = 0
   , proyectiles = []
+  , vidaIzq = 30  -- Tanque izquierdo comienza con 30 puntos de vida
+  , vidaDer = 30  -- Tanque derecho comienza con 30 puntos de vida
   }
 
 -- Función principal
 main :: IO ()
 main = play
-    (InWindow "Tanques y Proyectiles" (windowWidth, windowHeight) (100, 100))
+    (InWindow "CANOWARS" (windowWidth, windowHeight) (100, 100))
     white
     60
     estadoInicial
@@ -66,11 +70,21 @@ main = play
 
 -- Función para dibujar la escena
 dibujarEscena :: Estado -> Picture
-dibujarEscena estado = pictures
-  [ dibujarTanque (posTanqueIzq estado) (anguloCanonIzq estado) green  -- Tanque izquierdo
-  , dibujarTanque (posTanqueDer estado) (anguloCanonDer estado) blue   -- Tanque derecho
-  , paredDivisoria
-  , dibujarProyectiles (proyectiles estado)
+dibujarEscena estado
+--  | vidaIzq estado <= 0 || vidaDer estado <= 0 = renderFinDeJuego
+  | otherwise = pictures
+    [ dibujarTanque (posTanqueIzq estado) (anguloCanonIzq estado) green  -- Tanque izquierdo
+    , dibujarTanque (posTanqueDer estado) (anguloCanonDer estado) blue   -- Tanque derecho
+    , paredDivisoria
+    , dibujarProyectiles (proyectiles estado)
+    , dibujarVida estado
+    ]
+
+-- Función para dibujar la vida de los tanques
+dibujarVida :: Estado -> Picture
+dibujarVida estado = pictures
+  [ translate (-fromIntegral windowWidth / 2 + 20) (fromIntegral windowHeight / 2 - 30) (text ("Vida: " ++ show (vidaIzq estado)))
+  , translate (fromIntegral windowWidth / 2 - 100) (fromIntegral windowHeight / 2 - 30) (text ("Vida: " ++ show (vidaDer estado)))
   ]
 
 -- Función para dibujar un tanque en una posición dada con un ángulo para el cañón
@@ -131,9 +145,14 @@ dispararProyectilDer estado = estado { proyectiles = proyectil : proyectiles est
       , velY = initialProjectileSpeed * sin anguloRad
       }
 
--- Actualizar el estado del juego
 actualizar :: Float -> Estado -> Estado
-actualizar tiempo estado = estado { proyectiles = map (actualizarProyectil tiempo) (proyectiles estado) }
+actualizar tiempo estado
+--  | vidaIzq estado <= 0 || vidaDer estado <= 0 = estado  -- No actualizamos el juego si ha terminado
+  | otherwise = estado
+    { proyectiles = map (actualizarProyectil tiempo) (proyectiles estado)
+    , vidaIzq = vidaIzq (procesarImpactos estado)
+    , vidaDer = vidaDer (procesarImpactos estado)
+    }
 
 -- Actualizar la posición de un proyectil considerando la gravedad
 actualizarProyectil :: Float -> Proyectil -> Proyectil
@@ -142,3 +161,30 @@ actualizarProyectil tiempo proyectil = proyectil
   , posY = posY proyectil + velY proyectil * tiempo - 0.5 * gravity * tiempo ^ 2
   , velY = velY proyectil - gravity * tiempo
   }
+
+-- Procesar impactos de los proyectiles con los tanques
+procesarImpactos :: Estado -> Estado
+procesarImpactos estado = foldl procesarImpacto estado (proyectiles estado)
+
+-- Procesar un solo impacto
+procesarImpacto :: Estado -> Proyectil -> Estado
+procesarImpacto estado proyectil
+  | impactoTanqueIzq = estado { vidaIzq = vidaIzq estado - 10, proyectiles = filtrarProyectiles estado (proyectiles estado) proyectil }
+  | impactoTanqueDer = estado { vidaDer = vidaDer estado - 10, proyectiles = filtrarProyectiles estado (proyectiles estado) proyectil }
+  | otherwise = estado
+  where
+    impactoTanqueIzq = colisionaConTanque (posTanqueIzq estado) proyectil
+    impactoTanqueDer = colisionaConTanque (posTanqueDer estado) proyectil
+
+-- Función para eliminar un proyectil de la lista si colisiona con un tanque
+filtrarProyectiles :: Estado -> [Proyectil] -> Proyectil -> [Proyectil]
+filtrarProyectiles estado proyectiles proyectilImpactado
+  = filter (\p -> not (colisionaConTanque (posTanqueIzq estado) p || colisionaConTanque (posTanqueDer estado) p)) proyectiles
+
+-- Función para verificar si un proyectil ha colisionado con un tanque
+colisionaConTanque :: Float -> Proyectil -> Bool
+colisionaConTanque posTanque proyectil = abs (posX proyectil - posTanque) < 30 && posY proyectil < groundLevel + 20
+
+-- Función para mostrar fin de juego
+renderFinDeJuego :: Picture
+renderFinDeJuego = color red (text "¡Juego Terminado!")
