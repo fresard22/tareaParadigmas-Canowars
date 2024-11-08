@@ -1,6 +1,7 @@
 module Main where
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
+import Data.List
 
 -- Tamaño de la ventana
 windowWidth, windowHeight :: Int
@@ -33,8 +34,10 @@ data Estado = Estado
   , anguloCanonIzq :: Float
   , anguloCanonDer :: Float
   , proyectiles :: [Proyectil]
-  , vidaIzq :: Int   -- Vida del tanque izquierdo
-  , vidaDer :: Int   -- Vida del tanque derecho
+  , vidaIzq :: Int      -- Vida del tanque izquierdo
+  , vidaDer :: Int      -- Vida del tanque derecho
+  , gasolinaIzq :: Int  -- Gasolina del tanque izquierdo
+  , gasolinaDer :: Int  -- Gasolina del tanque derecho
   }
 
 -- Representación de un proyectil
@@ -43,6 +46,7 @@ data Proyectil = Proyectil
   , posY :: Float
   , velX :: Float
   , velY :: Float
+  , haImpactado :: Bool  -- Nuevo campo para indicar si el proyectil ha impactado
   } deriving (Eq)
 
 -- Estado inicial
@@ -55,6 +59,8 @@ estadoInicial = Estado
   , proyectiles = []
   , vidaIzq = 30  -- Tanque izquierdo comienza con 30 puntos de vida
   , vidaDer = 30  -- Tanque derecho comienza con 30 puntos de vida
+  , gasolinaIzq = 10  -- Tanque izquierdo comienza con 10 puntos de gasolina
+  , gasolinaDer = 10  -- Tanque derecho comienza con 10 puntos de gasolina
   }
 
 -- Función principal
@@ -80,13 +86,6 @@ dibujarEscena estado
     , dibujarVida estado
     ]
 
--- Función para dibujar la vida de los tanques
-dibujarVida :: Estado -> Picture
-dibujarVida estado = pictures
-  [ translate (-fromIntegral windowWidth / 2 + 20) (fromIntegral windowHeight / 2 - 30) (text ("Vida: " ++ show (vidaIzq estado)))
-  , translate (fromIntegral windowWidth / 2 - 100) (fromIntegral windowHeight / 2 - 30) (text ("Vida: " ++ show (vidaDer estado)))
-  ]
-
 -- Función para dibujar un tanque en una posición dada con un ángulo para el cañón
 dibujarTanque :: Float -> Float -> Color -> Picture
 dibujarTanque x angulo colorTanque = translate x groundLevel (pictures [cuerpoTanque, canonRotado])
@@ -106,19 +105,58 @@ dibujarProyectiles = pictures . map dibujarProyectil
 dibujarProyectil :: Proyectil -> Picture
 dibujarProyectil proyectil = translate (posX proyectil) (posY proyectil) (color red (circleSolid 5))
 
+-- Función para dibujar la vida y gasolina de los tanques
+dibujarVida :: Estado -> Picture
+dibujarVida estado = pictures
+  [ translate (-fromIntegral windowWidth / 2 + 20) (fromIntegral windowHeight / 2 - 30) (text ("Vida: " ++ show (vidaIzq estado)))
+  , translate (-fromIntegral windowWidth / 2 + 20) (fromIntegral windowHeight / 2 - 60) (text ("Gasolina: " ++ show (gasolinaIzq estado)))
+  , translate (fromIntegral windowWidth / 2 - 100) (fromIntegral windowHeight / 2 - 30) (text ("Vida: " ++ show (vidaDer estado)))
+  , translate (fromIntegral windowWidth / 2 - 100) (fromIntegral windowHeight / 2 - 60) (text ("Gasolina: " ++ show (gasolinaDer estado)))
+  ]
+
 -- Manejar eventos de teclado
 manejarEvento :: Event -> Estado -> Estado
-manejarEvento (EventKey (Char 'd') Down _ _) estado = estado { posTanqueIzq = posTanqueIzq estado + moveSpeed }
-manejarEvento (EventKey (Char 'a') Down _ _) estado = estado { posTanqueIzq = posTanqueIzq estado - moveSpeed }
-manejarEvento (EventKey (Char 'w') Down _ _) estado = estado { anguloCanonIzq = anguloCanonIzq estado - angleSpeed }
-manejarEvento (EventKey (Char 's') Down _ _) estado = estado { anguloCanonIzq = anguloCanonIzq estado + angleSpeed }
-manejarEvento (EventKey (Char 'l') Down _ _) estado = estado { posTanqueDer = posTanqueDer estado + moveSpeed }
-manejarEvento (EventKey (Char 'j') Down _ _) estado = estado { posTanqueDer = posTanqueDer estado - moveSpeed }
-manejarEvento (EventKey (Char 'i') Down _ _) estado = estado { anguloCanonDer = anguloCanonDer estado + angleSpeed }
-manejarEvento (EventKey (Char 'k') Down _ _) estado = estado { anguloCanonDer = anguloCanonDer estado - angleSpeed }
--- Disparar proyectiles
-manejarEvento (EventKey (Char 'p') Down _ _) estado = dispararProyectilDer estado
-manejarEvento (EventKey (Char 'f') Down _ _) estado = dispararProyectilIzq estado
+manejarEvento (EventKey (Char 'd') Down _ _) estado
+  | gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado + moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 'a') Down _ _) estado
+  | gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado - moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 'w') Down _ _) estado
+  | gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado - angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 's') Down _ _) estado
+  | gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado + angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 'l') Down _ _) estado
+  | gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado + moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 'j') Down _ _) estado
+  | gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado - moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 'i') Down _ _) estado
+  | gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado + angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 'k') Down _ _) estado
+  | gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado - angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | otherwise = estado
+
+-- Disparar proyectiles si hay gasolina
+manejarEvento (EventKey (Char 'p') Down _ _) estado
+  | gasolinaDer estado > 0 = dispararProyectilDer estado { gasolinaDer = gasolinaDer estado - 1 }
+  | otherwise = estado
+
+manejarEvento (EventKey (Char 'f') Down _ _) estado
+  | gasolinaIzq estado > 0 = dispararProyectilIzq estado { gasolinaIzq = gasolinaIzq estado - 1 }
+  | otherwise = estado
+
 manejarEvento _ estado = estado
 
 -- Crear y añadir un proyectil desde el tanque izquierdo
@@ -131,6 +169,7 @@ dispararProyectilIzq estado = estado { proyectiles = proyectil : proyectiles est
       , posY = groundLevel - 30 * sin anguloRad
       , velX = initialProjectileSpeed * cos anguloRad
       , velY = -initialProjectileSpeed * sin anguloRad
+      , haImpactado = False
       }
 
 -- Crear y añadir un proyectil desde el tanque derecho
@@ -143,6 +182,7 @@ dispararProyectilDer estado = estado { proyectiles = proyectil : proyectiles est
       , posY = groundLevel + 30 * sin anguloRad
       , velX = -initialProjectileSpeed * cos anguloRad   -- Velocidad negativa para dirección izquierda
       , velY = initialProjectileSpeed * sin anguloRad
+      , haImpactado = False
       }
 
 actualizar :: Float -> Estado -> Estado
@@ -164,17 +204,24 @@ actualizarProyectil tiempo proyectil = proyectil
 
 -- Procesar impactos de los proyectiles con los tanques
 procesarImpactos :: Estado -> Estado
-procesarImpactos estado = foldl procesarImpacto estado (proyectiles estado)
-
--- Procesar un solo impacto
-procesarImpacto :: Estado -> Proyectil -> Estado
-procesarImpacto estado proyectil
-  | impactoTanqueIzq = estado { vidaIzq = vidaIzq estado - 10, proyectiles = filtrarProyectiles estado (proyectiles estado) proyectil }
-  | impactoTanqueDer = estado { vidaDer = vidaDer estado - 10, proyectiles = filtrarProyectiles estado (proyectiles estado) proyectil }
-  | otherwise = estado
+procesarImpactos estado = estado
+  { vidaIzq = vidaIzqActualizada
+  , vidaDer = vidaDerActualizada
+  , proyectiles = proyectilesActualizados
+  }
   where
-    impactoTanqueIzq = colisionaConTanque (posTanqueIzq estado) proyectil
-    impactoTanqueDer = colisionaConTanque (posTanqueDer estado) proyectil
+    -- Filtrar proyectiles que colisionan con cada tanque y no han impactado aún
+    (impactosIzq, proyectilesRestantes) = partition (\p -> colisionaConTanque (posTanqueIzq estado) p && not (haImpactado p)) (proyectiles estado)
+    (impactosDer, proyectilesFinales) = partition (\p -> colisionaConTanque (posTanqueDer estado) p && not (haImpactado p)) proyectilesRestantes
+
+    -- Vida actualizada considerando solo un impacto de 10 puntos por proyectil
+    vidaIzqActualizada = vidaIzq estado - (10 * length impactosIzq)
+    vidaDerActualizada = vidaDer estado - (10 * length impactosDer)
+
+    -- Actualizamos `haImpactado` para todos los proyectiles que colisionaron
+    proyectilesActualizados = map (\p -> if p `elem` (impactosIzq ++ impactosDer)
+                                         then p { haImpactado = True }
+                                         else p) proyectilesFinales
 
 -- Función para eliminar un proyectil de la lista si colisiona con un tanque
 filtrarProyectiles :: Estado -> [Proyectil] -> Proyectil -> [Proyectil]
@@ -183,7 +230,13 @@ filtrarProyectiles estado proyectiles proyectilImpactado
 
 -- Función para verificar si un proyectil ha colisionado con un tanque
 colisionaConTanque :: Float -> Proyectil -> Bool
-colisionaConTanque posTanque proyectil = abs (posX proyectil - posTanque) < 30 && posY proyectil < groundLevel + 20
+colisionaConTanque posTanque proyectil = 
+    let rangoColisionHorizontal = 30    -- Rango de colisión en el eje X (ajusta según el tamaño del tanque)
+        rangoColisionVertical = 20      -- Rango de colisión en el eje Y (ajusta según la altura del tanque)
+    in abs (posX proyectil - posTanque) < rangoColisionHorizontal
+       && posY proyectil >= groundLevel - rangoColisionVertical
+       && posY proyectil <= groundLevel + rangoColisionVertical
+
 
 -- Función para mostrar fin de juego
 renderFinDeJuego :: Picture
