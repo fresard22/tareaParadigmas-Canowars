@@ -27,17 +27,20 @@ initialProjectileSpeed = 220
 gravity :: Float
 gravity = 70
 
--- Estado del juego: posiciones y ángulos de los cañones de los tanques y proyectiles activos
+data Turno = Izq | Der deriving (Eq)
+
+-- Estado del juego: ahora incluye los rectángulos de gasolina
 data Estado = Estado
-  { posTanqueIzq :: Float
-  , posTanqueDer :: Float
-  , anguloCanonIzq :: Float
-  , anguloCanonDer :: Float
-  , proyectiles :: [Proyectil]
-  , vidaIzq :: Int      -- Vida del tanque izquierdo
-  , vidaDer :: Int      -- Vida del tanque derecho
-  , gasolinaIzq :: Int  -- Gasolina del tanque izquierdo
-  , gasolinaDer :: Int  -- Gasolina del tanque derecho
+  { posTanqueIzq     :: Float
+  , posTanqueDer     :: Float
+  , anguloCanonIzq   :: Float
+  , anguloCanonDer   :: Float
+  , proyectiles      :: [Proyectil]
+  , vidaIzq          :: Int
+  , vidaDer          :: Int
+  , gasolinaIzq      :: Int
+  , gasolinaDer      :: Int
+  , turno            :: Turno  -- Agregado para saber de quién es el turno
   }
 
 -- Representación de un proyectil
@@ -49,6 +52,12 @@ data Proyectil = Proyectil
   , haImpactado :: Bool  -- Nuevo campo para indicar si el proyectil ha impactado
   } deriving (Eq)
 
+-- Representación de un rectángulo de gasolina
+data Gasolina = Gasolina
+  { posGasolinaX :: Float
+  , posGasolinaY :: Float
+  }
+
 -- Estado inicial
 estadoInicial :: Estado
 estadoInicial = Estado 
@@ -57,10 +66,11 @@ estadoInicial = Estado
   , anguloCanonIzq = 0
   , anguloCanonDer = 0
   , proyectiles = []
-  , vidaIzq = 30  -- Tanque izquierdo comienza con 30 puntos de vida
-  , vidaDer = 30  -- Tanque derecho comienza con 30 puntos de vida
-  , gasolinaIzq = 10  -- Tanque izquierdo comienza con 10 puntos de gasolina
-  , gasolinaDer = 10  -- Tanque derecho comienza con 10 puntos de gasolina
+  , vidaIzq = 30
+  , vidaDer = 30
+  , gasolinaIzq = 10
+  , gasolinaDer = 10
+  , turno = Izq  -- El tanque izquierdo empieza
   }
 
 -- Función principal
@@ -74,17 +84,20 @@ main = play
     manejarEvento
     actualizar
 
--- Función para dibujar la escena
 dibujarEscena :: Estado -> Picture
 dibujarEscena estado
---  | vidaIzq estado <= 0 || vidaDer estado <= 0 = renderFinDeJuego
   | otherwise = pictures
-    [ dibujarTanque (posTanqueIzq estado) (anguloCanonIzq estado) green  -- Tanque izquierdo
-    , dibujarTanque (posTanqueDer estado) (anguloCanonDer estado) blue   -- Tanque derecho
+    [ dibujarTanque (posTanqueIzq estado) (anguloCanonIzq estado) green
+    , dibujarTanque (posTanqueDer estado) (anguloCanonDer estado) blue
     , paredDivisoria
     , dibujarProyectiles (proyectiles estado)
     , dibujarVida estado
+    , dibujarTurno (turno estado)  -- Indicador del turno actual
     ]
+
+dibujarTurno :: Turno -> Picture
+dibujarTurno Izq = translate (- fromIntegral windowWidth / 2 + 20) (fromIntegral windowHeight / 2 - 50) (color green (text "Turno del Tanque Izquierdo"))
+dibujarTurno Der = translate (- fromIntegral windowWidth / 2 + 20) (fromIntegral windowHeight / 2 - 50) (color blue (text "Turno del Tanque Derecho"))
 
 -- Función para dibujar un tanque en una posición dada con un ángulo para el cañón
 dibujarTanque :: Float -> Float -> Color -> Picture
@@ -117,46 +130,25 @@ dibujarVida estado = pictures
 -- Manejar eventos de teclado
 manejarEvento :: Event -> Estado -> Estado
 manejarEvento (EventKey (Char 'd') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado + moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Izq && gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado + moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Der && gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado + moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
-
 manejarEvento (EventKey (Char 'a') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado - moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Izq && gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado - moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Der && gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado - moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
-
 manejarEvento (EventKey (Char 'w') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado - angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Izq && gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado - angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Der && gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado + angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
-
 manejarEvento (EventKey (Char 's') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado + angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Izq && gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado + angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Der && gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado - angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
-
-manejarEvento (EventKey (Char 'l') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado + moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
-  | otherwise = estado
-
-manejarEvento (EventKey (Char 'j') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado - moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
-  | otherwise = estado
-
-manejarEvento (EventKey (Char 'i') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado + angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
-  | otherwise = estado
-
-manejarEvento (EventKey (Char 'k') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado - angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
-  | otherwise = estado
-
--- Disparar proyectiles si hay gasolina
-manejarEvento (EventKey (Char 'p') Down _ _) estado
-  | gasolinaDer estado > 0 = dispararProyectilDer estado { gasolinaDer = gasolinaDer estado - 1 }
-  | otherwise = estado
-
 manejarEvento (EventKey (Char 'f') Down _ _) estado
-  | gasolinaIzq estado > 0 = dispararProyectilIzq estado { gasolinaIzq = gasolinaIzq estado - 1 }
+  | turno estado == Izq && gasolinaIzq estado > 0 = dispararProyectilIzq estado
+  | turno estado == Der && gasolinaDer estado > 0 = dispararProyectilDer estado
   | otherwise = estado
-
 manejarEvento _ estado = estado
 
 -- Crear y añadir un proyectil desde el tanque izquierdo
@@ -187,13 +179,13 @@ dispararProyectilDer estado = estado { proyectiles = proyectil : proyectiles est
 
 actualizar :: Float -> Estado -> Estado
 actualizar tiempo estado
---  | vidaIzq estado <= 0 || vidaDer estado <= 0 = estado  -- No actualizamos el juego si ha terminado
-  | otherwise = estado
-    { proyectiles = map (actualizarProyectil tiempo) (proyectiles estado)
+  | gasolinaIzq estado <= 0 && turno estado == Izq = estado { turno = Der, gasolinaIzq = 10, gasolinaDer = gasolinaDer estado }  -- El tanque izquierdo terminó su turno
+  | gasolinaDer estado <= 0 && turno estado == Der = estado { turno = Izq, gasolinaIzq = gasolinaIzq estado, gasolinaDer = 10 }  -- El tanque derecho terminó su turno
+  | otherwise = estado { 
+      proyectiles = map (actualizarProyectil tiempo) (proyectiles estado)
     , vidaIzq = vidaIzq (procesarImpactos estado)
     , vidaDer = vidaDer (procesarImpactos estado)
-    }
-
+  }
 -- Actualizar la posición de un proyectil considerando la gravedad
 actualizarProyectil :: Float -> Proyectil -> Proyectil
 actualizarProyectil tiempo proyectil = proyectil
