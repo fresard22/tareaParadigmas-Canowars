@@ -93,13 +93,14 @@ renderFinDeJuego :: Estado -> Picture
 renderFinDeJuego estado = 
   pictures 
     [ translate (-300) 0 $ color red $
-        if vidaIzq estado <= 0 && vidaDer estado <= 0
+        if gasolinaIzq estado == 0 && gasolinaDer estado == 0
           then scale 0.5 0.5 (text "¡Empate!")
           else if vidaIzq estado <= 0
             then scale 0.5 0.5 (color blue (text "¡Tanque Derecho Gana!"))
             else scale 0.5 0.5 (color green (text "¡Tanque Izquierdo Gana!"))
     , translate (-200) (-50) $ color black $ scale 0.3 0.3 (text "Presiona 'R' para reiniciar")
     ]
+
 
 -- Agrega una función para reiniciar el juego
 reiniciarJuego :: Estado -> Estado
@@ -220,7 +221,8 @@ dispararProyectilDer estado = estado { proyectiles = proyectil : proyectiles est
 actualizar :: Float -> Estado -> Estado
 actualizar tiempo estado
   | juegoTerminado estado = estado
-  | vidaIzq estado <= 0 || vidaDer estado <= 0 = estado { juegoTerminado = True }
+  | vidaIzq estado <= 0 || vidaDer estado <= 0 || (gasolinaIzq estado == 0 && gasolinaDer estado == 0) = 
+      estado { juegoTerminado = True }  -- El juego termina en empate si ambos tanques se quedan sin gasolina
   | otherwise = estado
       { proyectiles = proyectilesFinales
       , vidaIzq = vidaIzqActualizada
@@ -228,6 +230,7 @@ actualizar tiempo estado
       }
   where
     (vidaIzqActualizada, vidaDerActualizada, proyectilesFinales) = procesarImpactos estado
+
 
 -- Actualizar posición de proyectiles
 actualizarProyectil :: Float -> Proyectil -> Proyectil
