@@ -239,7 +239,7 @@ actualizarProyectil tiempo p
   | colisionaConParedDivisoria p = p { haImpactado = True }  -- Marcar como impactado si colisiona con la pared divisoria
   | otherwise = p 
       { posX = posX p + velX p * tiempo
-      , posY = posY p + velY p * tiempo - 0.5 * gravity * tiempo ^ 2
+      , posY = posY p + velY p * tiempo - 0.5 * gravity * tiempo ** 2
       , velY = velY p - gravity * tiempo
       }
 
