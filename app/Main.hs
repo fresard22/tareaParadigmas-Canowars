@@ -271,7 +271,8 @@ procesarImpactos estado = (vidaIzqNueva, vidaDerNueva, proyectilesFinales)
             then critDamage  -- Aplicar un daño crítico entre 7 y 9
             else baseDamage  -- Si no es crítico, usar el daño base
       -- La semilla lamentablemente se reinicia por partida y no por tiro, ya que al querer usar un metodo
-      -- impuro para la generacion de numeros aleatorios con randomRIO, al usar la libreria gloss nos daba problemas en compilacio,
+      -- impuro para la generacion de numeros aleatorios con randomRIO, al usar la libreria gloss nos daba problemas en compilacion,
+      -- ya que la libreria Gloss trabaja con datos inmutables a comparacion de como lo es randomRIO (dinamico),
       -- por este motivo decidimos usar un metodo puro como StdGen para evitar problemas, la "desventaja de esto" es que
       -- el daño critico por partida va a ser el mismo si un proyectil realiza un daño critico.
 
