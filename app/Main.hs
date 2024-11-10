@@ -262,21 +262,26 @@ procesarImpactos estado = (vidaIzqNueva, vidaDerNueva, proyectilesFinales)
     proyectilesFinales = filter (not . haImpactado) proyectilesRestantes2
 
     -- Función para calcular el daño de cada proyectil con probabilidad de daño crítico
-    calculateDamage :: Int -> Int
-    calculateDamage baseDamage =
-      let gen = mkStdGen 42  -- Crear solo un generador inicial
+    calculateDamage :: Int -> Int -> Int
+    calculateDamage baseDamage seed =
+      let gen = mkStdGen seed
           (prob, gen') = randomR (0 :: Int, 99 :: Int) gen  -- Para calcular probabilidad de crítico
           (critDamage, _) = randomR (7 :: Int, 9 :: Int) gen'  -- Daño crítico aleatorio entre 7 y 9
       in if prob < 5
-            then critDamage  -- Solo aplicar daño crítico, sin sumar el base
-            else baseDamage  -- Si no es crítico, solo se usa el daño base
+            then critDamage  -- Aplicar un daño crítico entre 7 y 9
+            else baseDamage  -- Si no es crítico, usar el daño base
+      -- La semilla lamentablemente se reinicia por partida y no por tiro, ya que al querer usar un metodo
+      -- impuro para la generacion de numeros aleatorios con randomRIO, al usar la libreria gloss nos daba problemas en compilacio,
+      -- por este motivo decidimos usar un metodo puro como StdGen para evitar problemas, la "desventaja de esto" es que
+      -- el daño critico por partida va a ser el mismo si un proyectil realiza un daño critico.
 
-
+    -- Usar el índice de cada proyectil como semilla para generar valores aleatorios diferentes
+    dañosIzq = zipWith (\p idx -> calculateDamage 3 idx) impactosIzq [1..]
+    dañosDer = zipWith (\p idx -> calculateDamage 3 idx) impactosDer [1..]
 
     -- Actualizar vida de los tanques en función de los impactos
-    vidaIzqNueva = vidaIzq estado - sum (map (const $ calculateDamage 3) impactosIzq)
-    vidaDerNueva = vidaDer estado - sum (map (const $ calculateDamage 3) impactosDer)
-
+    vidaIzqNueva = vidaIzq estado - sum dañosIzq
+    vidaDerNueva = vidaDer estado - sum dañosDer
 
 
 -- Función para eliminar un proyectil de la lista si colisiona con un tanque
