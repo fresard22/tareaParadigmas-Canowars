@@ -2,6 +2,8 @@ module Main where
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List
+import System.Random (randomR, mkStdGen)
+
 
 -- Tamaño de la ventana
 windowWidth, windowHeight :: Int
@@ -259,9 +261,20 @@ procesarImpactos estado = (vidaIzqNueva, vidaDerNueva, proyectilesFinales)
     -- Filtrar proyectiles que no han impactado ni con tanques ni con la pared divisoria
     proyectilesFinales = filter (not . haImpactado) proyectilesRestantes2
 
+    -- Función para calcular el daño de cada proyectil con probabilidad de daño crítico
+    calculateDamage :: Int -> Int
+    calculateDamage baseDamage =
+      let gen = mkStdGen 42  -- Crear solo un generador inicial
+          (prob, gen') = randomR (0 :: Int, 99 :: Int) gen  -- Para calcular probabilidad de crítico
+          (critDamage, _) = randomR (7 :: Int, 9 :: Int) gen'  -- Daño crítico aleatorio entre 7 y 9
+      in if prob < 100
+            then baseDamage + critDamage  -- Añadir daño crítico aleatorio
+            else baseDamage
+
     -- Actualizar vida de los tanques en función de los impactos
-    vidaIzqNueva = vidaIzq estado - 3 * length impactosIzq
-    vidaDerNueva = vidaDer estado - 3 * length impactosDer
+    vidaIzqNueva = vidaIzq estado - sum (map (const $ calculateDamage 3) impactosIzq)
+    vidaDerNueva = vidaDer estado - sum (map (const $ calculateDamage 3) impactosDer)
+
 
 -- Función para eliminar un proyectil de la lista si colisiona con un tanque
 filtrarProyectiles :: Estado -> [Proyectil] -> Proyectil -> [Proyectil]
