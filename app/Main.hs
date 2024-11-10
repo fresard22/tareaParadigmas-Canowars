@@ -119,8 +119,23 @@ dibujarTanque x angulo colorTanque = translate x groundLevel (pictures [cuerpoTa
 paredDivisoria :: Picture
 paredDivisoria = translate 0 (groundLevel+124) (color (greyN 0.5) (rectangleSolid 30 (fromIntegral windowHeight / 2.5)))
 
+-- Ancho de la pared divisoria
+anchoParedDivisoria :: Float
+anchoParedDivisoria = 30 / 2  -- Mitad del ancho de la pared
+
+-- Altura de la pared divisoria
+alturaParedDivisoria :: Float
+alturaParedDivisoria = fromIntegral windowHeight / 2.5
+
+-- Función de colisión mejorada
 colisionaConParedDivisoria :: Proyectil -> Bool
-colisionaConParedDivisoria proyectil = abs (posX proyectil) < 2.0
+colisionaConParedDivisoria proyectil =
+    abs (posX proyectil) <= anchoParedDivisoria &&  -- Dentro del rango horizontal de la pared
+    posY proyectil <= (groundLevel + 124 + alturaParedDivisoria) &&  -- Por debajo o en el límite superior
+    posY proyectil >= groundLevel + 124  -- Por encima del límite inferior de la pared
+
+
+
 
 -- Función para dibujar todos los proyectiles
 dibujarProyectiles :: [Proyectil] -> Picture
@@ -145,38 +160,65 @@ dibujarVida estado = pictures
         (scale 0.2 0.2 $ color blue (text ("Gasolina: " ++ show (gasolinaDer estado))))
   ]
 
--- Manejar eventos de teclado
+
+-- Límite de movimiento para cada tanque
+limiteTanqueIzq :: Float
+limiteTanqueIzq = -anchoParedDivisoria - 30  -- Ajusta según el tamaño de tu tanque
+
+limiteTanqueDer :: Float
+limiteTanqueDer = anchoParedDivisoria + 30  -- Ajusta según el tamaño de tu tanque
+
+
+
+-- Manejar eventos de teclado para ambos tanques
 manejarEvento :: Event -> Estado -> Estado
+
+-- Eventos para el tanque izquierdo
 manejarEvento (EventKey (Char 'd') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado + moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | gasolinaIzq estado > 0 && posTanqueIzq estado + moveSpeed < limiteTanqueIzq
+      = estado { posTanqueIzq = posTanqueIzq estado + moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
   | otherwise = estado
 
 manejarEvento (EventKey (Char 'a') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado - moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | gasolinaIzq estado > 0
+      = estado { posTanqueIzq = posTanqueIzq estado - moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
   | otherwise = estado
 
 manejarEvento (EventKey (Char 'w') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado - angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | gasolinaIzq estado > 0
+      = estado { anguloCanonIzq = anguloCanonIzq estado - angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
   | otherwise = estado
 
 manejarEvento (EventKey (Char 's') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { anguloCanonIzq = anguloCanonIzq estado + angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | gasolinaIzq estado > 0
+      = estado { anguloCanonIzq = anguloCanonIzq estado + angleSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | otherwise = estado
+
+  
+
+-- Eventos para el tanque derecho
+manejarEvento (EventKey (Char 'j') Down _ _) estado
+  | gasolinaDer estado > 0 && posTanqueDer estado - moveSpeed > limiteTanqueDer
+      = estado { posTanqueDer = posTanqueDer estado - moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
 
 manejarEvento (EventKey (Char 'l') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado + moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
-  | otherwise = estado
-
-manejarEvento (EventKey (Char 'j') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { posTanqueDer = posTanqueDer estado - moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | gasolinaDer estado > 0 
+      = estado { posTanqueDer = posTanqueDer estado + moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
 
 manejarEvento (EventKey (Char 'i') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado + angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | gasolinaDer estado > 0
+      = estado { anguloCanonDer = anguloCanonDer estado + angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
+
 manejarEvento (EventKey (Char 'k') Down _ _) estado
-  | gasolinaDer estado > 0 = estado { anguloCanonDer = anguloCanonDer estado - angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | gasolinaDer estado > 0
+      = estado { anguloCanonDer = anguloCanonDer estado - angleSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
+
+
+
 
 -- Disparar proyectiles si hay gasolina
 manejarEvento (EventKey (Char 'p') Down _ _) estado
@@ -237,7 +279,7 @@ actualizar tiempo estado
     (vidaIzqActualizada, vidaDerActualizada, proyectilesFinales) = procesarImpactos estado
 
 
--- Actualizar posición de proyectiles
+-- Actualizar posición de proyectiles con lógica de impacto
 actualizarProyectil :: Float -> Proyectil -> Proyectil
 actualizarProyectil tiempo p
   | haImpactado p = p
@@ -295,10 +337,31 @@ colisionaConTanque :: Float -> Proyectil -> Bool
 colisionaConTanque posTanque p = abs (posX p - posTanque) < 30 && posY p < groundLevel + 20 && posY p > groundLevel - 20
 
 
--- Procesa los eventos del juego normal
+-- Función para verificar si un tanque está colisionando con la pared divisoria
+colisionaConParedTanque :: Float -> Bool
+colisionaConParedTanque posTanque =
+    abs posTanque <= anchoParedDivisoria + 30  -- Checa si el tanque está a la izquierda o derecha de la pared, a su ancho más el del tanque.
+
+-- Procesa los eventos del juego normal, evitando que los tanques pasen la pared
 manejarEventoJuego :: Event -> Estado -> Estado
 manejarEventoJuego (EventKey (Char 'd') Down _ _) estado
-  | gasolinaIzq estado > 0 = estado { posTanqueIzq = posTanqueIzq estado + moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | gasolinaIzq estado > 0 && not (colisionaConParedTanque (posTanqueIzq estado + moveSpeed)) = 
+      estado { posTanqueIzq = posTanqueIzq estado + moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
   | otherwise = estado
--- Agrega aquí el resto de los controles normales
+
+manejarEventoJuego (EventKey (Char 'a') Down _ _) estado
+  | gasolinaIzq estado > 0 && not (colisionaConParedTanque (posTanqueIzq estado - moveSpeed)) = 
+      estado { posTanqueIzq = posTanqueIzq estado - moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
+  | otherwise = estado
+
+manejarEventoJuego (EventKey (Char 'l') Down _ _) estado
+  | gasolinaDer estado > 0 && not (colisionaConParedTanque (posTanqueDer estado + moveSpeed)) = 
+      estado { posTanqueDer = posTanqueDer estado + moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | otherwise = estado
+
+manejarEventoJuego (EventKey (Char 'j') Down _ _) estado
+  | gasolinaDer estado > 0 && not (colisionaConParedTanque (posTanqueDer estado - moveSpeed)) = 
+      estado { posTanqueDer = posTanqueDer estado - moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
+  | otherwise = estado
+
 manejarEventoJuego _ estado = estado
