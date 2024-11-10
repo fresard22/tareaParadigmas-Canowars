@@ -25,7 +25,7 @@ angleSpeed = 5
 initialProjectileSpeed :: Float
 initialProjectileSpeed = 220
 gravity :: Float
-gravity = 70
+gravity = 60
 
 -- Estado del juego: posiciones y ángulos de los cañones de los tanques y proyectiles activos
 data Estado = Estado
@@ -60,8 +60,8 @@ estadoInicial = Estado
   , proyectiles = []
   , vidaIzq = 30  -- Tanque izquierdo comienza con 30 puntos de vida
   , vidaDer = 30  -- Tanque derecho comienza con 30 puntos de vida
-  , gasolinaIzq = 100  -- Tanque izquierdo comienza con 10 puntos de gasolina
-  , gasolinaDer = 100  -- Tanque derecho comienza con 10 puntos de gasolina
+  , gasolinaIzq = 100  -- Tanque izquierdo comienza con 100 puntos de gasolina
+  , gasolinaDer = 100  -- Tanque derecho comienza con 100 puntos de gasolina
   , juegoTerminado = False
   }
 
@@ -115,10 +115,10 @@ dibujarTanque x angulo colorTanque = translate x groundLevel (pictures [cuerpoTa
 
 -- Función para dibujar la pared divisoria
 paredDivisoria :: Picture
-paredDivisoria = translate 0 (- fromIntegral windowHeight / 3) (color (greyN 0.5) (rectangleSolid 5 (fromIntegral windowHeight / 2)))
+paredDivisoria = translate 0 (groundLevel+124) (color (greyN 0.5) (rectangleSolid 30 (fromIntegral windowHeight / 2.5)))
 
 colisionaConParedDivisoria :: Proyectil -> Bool
-colisionaConParedDivisoria proyectil = abs (posX proyectil) < 2.5  -- Asume que el ancho de la pared es 5
+colisionaConParedDivisoria proyectil = abs (posX proyectil) < 2.0
 
 -- Función para dibujar todos los proyectiles
 dibujarProyectiles :: [Proyectil] -> Picture
@@ -235,7 +235,6 @@ actualizar tiempo estado
     (vidaIzqActualizada, vidaDerActualizada, proyectilesFinales) = procesarImpactos estado
 
 
-
 -- Actualizar posición de proyectiles
 actualizarProyectil :: Float -> Proyectil -> Proyectil
 actualizarProyectil tiempo p
@@ -261,8 +260,8 @@ procesarImpactos estado = (vidaIzqNueva, vidaDerNueva, proyectilesFinales)
     proyectilesFinales = filter (not . haImpactado) proyectilesRestantes2
 
     -- Actualizar vida de los tanques en función de los impactos
-    vidaIzqNueva = vidaIzq estado - 10 * length impactosIzq
-    vidaDerNueva = vidaDer estado - 10 * length impactosDer
+    vidaIzqNueva = vidaIzq estado - 3 * length impactosIzq
+    vidaDerNueva = vidaDer estado - 3 * length impactosDer
 
 -- Función para eliminar un proyectil de la lista si colisiona con un tanque
 filtrarProyectiles :: Estado -> [Proyectil] -> Proyectil -> [Proyectil]
