@@ -268,12 +268,15 @@ procesarImpactos estado = (vidaIzqNueva, vidaDerNueva, proyectilesFinales)
           (prob, gen') = randomR (0 :: Int, 99 :: Int) gen  -- Para calcular probabilidad de crítico
           (critDamage, _) = randomR (7 :: Int, 9 :: Int) gen'  -- Daño crítico aleatorio entre 7 y 9
       in if prob < 5
-            then baseDamage + critDamage  -- Añadir daño crítico aleatorio
-            else baseDamage
+            then critDamage  -- Solo aplicar daño crítico, sin sumar el base
+            else baseDamage  -- Si no es crítico, solo se usa el daño base
+
+
 
     -- Actualizar vida de los tanques en función de los impactos
     vidaIzqNueva = vidaIzq estado - sum (map (const $ calculateDamage 3) impactosIzq)
     vidaDerNueva = vidaDer estado - sum (map (const $ calculateDamage 3) impactosDer)
+
 
 
 -- Función para eliminar un proyectil de la lista si colisiona con un tanque
