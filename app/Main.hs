@@ -217,7 +217,7 @@ dispararProyectilDer estado = estado { proyectiles = proyectil : proyectiles est
       , haImpactado = False
       }
 
--- Función para actualizar el estado del juego en cada frame
+-- Usamos fmap para aplicar actualizarProyectil a cada proyectil en la lista
 actualizar :: Float -> Estado -> Estado
 actualizar tiempo estado
   | juegoTerminado estado = estado
@@ -229,7 +229,11 @@ actualizar tiempo estado
       , vidaDer = vidaDerActualizada
       }
   where
+    -- Usamos fmap para actualizar todos los proyectiles
+    proyectilesActualizados = fmap (actualizarProyectil tiempo) (proyectiles estado)
+    
     (vidaIzqActualizada, vidaDerActualizada, proyectilesFinales) = procesarImpactos estado
+
 
 
 -- Actualizar posición de proyectiles
