@@ -45,10 +45,10 @@ data Estado = Estado
 
 -- Representación de un proyectil
 data Proyectil = Proyectil
-  { posX :: Float
-  , posY :: Float
-  , velX :: Float
-  , velY :: Float
+  { posX :: Float       -- Posición horizontal del proyectil
+  , posY :: Float       -- Posición vertical del proyectil
+  , velX :: Float       -- Velocidad horizontal del proyectil
+  , velY :: Float       -- Velocidad vertical del proyectil
   , haImpactado :: Bool  -- Nuevo campo para indicar si el proyectil ha impactado
   } deriving (Eq)
 
@@ -95,7 +95,7 @@ renderFinDeJuego :: Estado -> Picture
 renderFinDeJuego estado = 
   pictures 
     [ translate (-300) 0 $ color red $
-        if gasolinaIzq estado == 0 && gasolinaDer estado == 0
+        if (vidaIzq estado <= 0 && vidaDer estado <= 0) || (gasolinaIzq estado == 0 && gasolinaDer estado == 0)
           then scale 0.5 0.5 (text "¡Empate!")
           else if vidaIzq estado <= 0
             then scale 0.5 0.5 (color blue (text "¡Tanque Derecho Gana!"))
