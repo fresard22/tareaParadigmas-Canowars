@@ -267,7 +267,7 @@ procesarImpactos estado = (vidaIzqNueva, vidaDerNueva, proyectilesFinales)
       let gen = mkStdGen 42  -- Crear solo un generador inicial
           (prob, gen') = randomR (0 :: Int, 99 :: Int) gen  -- Para calcular probabilidad de crítico
           (critDamage, _) = randomR (7 :: Int, 9 :: Int) gen'  -- Daño crítico aleatorio entre 7 y 9
-      in if prob < 100
+      in if prob < 5
             then baseDamage + critDamage  -- Añadir daño crítico aleatorio
             else baseDamage
 
