@@ -131,8 +131,8 @@ alturaParedDivisoria = fromIntegral windowHeight / 2.5
 colisionaConParedDivisoria :: Proyectil -> Bool
 colisionaConParedDivisoria proyectil =
     abs (posX proyectil) <= anchoParedDivisoria &&  -- Dentro del rango horizontal de la pared
-    posY proyectil <= (groundLevel + 124 + alturaParedDivisoria) &&  -- Por debajo o en el límite superior
-    posY proyectil >= groundLevel + 124  -- Por encima del límite inferior de la pared
+    posY proyectil <= groundLevel + alturaParedDivisoria  -- Solo detecta colisión si está debajo de la parte superior de la pared
+
 
 
 
