@@ -169,6 +169,13 @@ limiteTanqueDer :: Float
 limiteTanqueDer = anchoParedDivisoria + 30  -- Ajusta según el tamaño de tu tanque
 
 
+-- Nuevos límites para los movimientos hacia atrás de los tanques
+limiteTanqueIzqRetroceder :: Float
+limiteTanqueIzqRetroceder = - fromIntegral windowWidth / 2 + 30  -- Límite izquierdo considerando el tamaño del tanque
+
+limiteTanqueDerRetroceder :: Float
+limiteTanqueDerRetroceder = fromIntegral windowWidth / 2 - 30  -- Límite derecho considerando el tamaño del tanque
+
 
 -- Manejar eventos de teclado para ambos tanques
 manejarEvento :: Event -> Estado -> Estado
@@ -180,7 +187,7 @@ manejarEvento (EventKey (Char 'd') Down _ _) estado
   | otherwise = estado
 
 manejarEvento (EventKey (Char 'a') Down _ _) estado
-  | gasolinaIzq estado > 0
+  | gasolinaIzq estado > 0 && posTanqueIzq estado - moveSpeed > limiteTanqueIzqRetroceder
       = estado { posTanqueIzq = posTanqueIzq estado - moveSpeed, gasolinaIzq = gasolinaIzq estado - 1 }
   | otherwise = estado
 
@@ -203,7 +210,7 @@ manejarEvento (EventKey (Char 'j') Down _ _) estado
   | otherwise = estado
 
 manejarEvento (EventKey (Char 'l') Down _ _) estado
-  | gasolinaDer estado > 0 
+  | gasolinaDer estado > 0 && posTanqueDer estado + moveSpeed < limiteTanqueDerRetroceder
       = estado { posTanqueDer = posTanqueDer estado + moveSpeed, gasolinaDer = gasolinaDer estado - 1 }
   | otherwise = estado
 
